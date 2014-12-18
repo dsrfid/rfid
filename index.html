@@ -1,0 +1,195 @@
+<HTML ng-app="RFIDApp">
+
+<head>
+<title>Test RFID</title>
+<link rel="stylesheet" type="text/css" href="dsrfid.css">
+<script src="angular.min.js"></script>
+<script src="dsrfid.js"></script>
+<!-- %%%%%%% --!>
+</head>
+<!-- Tabs at the top of the page to select different actions --!>
+<body ng-controller="RFIDController" onload="closeWindow()">
+  <div id="logo"></div>
+
+  <ul ng-init="tab = 1">
+	  <li ng-class="{active:tab===1}"> 
+		  <a href ng-click="tab = 1">Edit Cards</a>	
+	  </li>
+	  <li ng-class="{active:tab===2}"> 
+		  <a href ng-click="tab = 2">Upload Image</a> 
+	  </li>
+	  <li ng-class="{active:tab===3}"> 
+		  <a href ng-click="tab = 3">Upload Sound</a> 
+	  </li>
+	  <li ng-class="{active:tab===4}"> 
+		  <a href ng-click="tab = 4">New Card</a> 
+	  </li>
+	  <li ng-class="{active:tab===5}"> 
+		  <a href ng-click="tab = 5">Delete Files</a> 
+	  </li>
+	  <br><br>
+  </ul>		
+
+
+  <!-- Popup overlay window to edit the table --!>
+  <div id="openModal" class="modalDialog" ng-model="clickedCard">
+	  <div>
+		  <a href="#close" title="Close" class="close">X</a>
+		  <h2>Edit Card</h2>
+      <input type="image" ng-click="saveCard()" class="saveButton" src="images/save.png"></input>
+      <div class="cardInput">
+        <label class="inputLabel">Card Number</label>
+        {{clickedCard.CardNumber}}
+      </div>
+      <div class="cardInput">
+        <label class="inputLabel">Exhibit</label>
+        <select name="exhibits" ng-model="clickedCard.Exhibit" class="exhibits"
+                ng-options="exhibit.ExhibitName for exhibit in exhibits">
+        </select>
+      </div>
+      <div class="cardInput">
+        <label class="inputLabel">Title</label>
+        <input type="text" class="cardTitle" ng-model="clickedCard.CardTitle"></input>
+      </div>
+      <div class="cardInput">
+        <label class="inputLabel">Text</label>
+        <textarea class="cardText" cols="50" rows="6" ng-model="clickedCard.CardText"></textarea>
+      </div>
+      <div class="cardInput hasPreview">
+        <label class="inputLabel">Image</label>
+        <select class="imageSelector" ng-model="clickedCard.Image" ng-options="image.name for image in images"></select>
+        <img class="previewImage" ng-src="{{clickedCard.Image.image}}">
+      </div>
+      <div class="cardInput hasPreview">
+        <label class="inputLabel">Sound</label>
+        <select class="soundSelector" ng-model="clickedCard.Sound" ng-options="sound.name for sound in sounds"></select>
+        <img class="playSound" src="images/sound.png" ng-click="playSound(clickedCard.Sound.sound)">
+      </div>
+	  </div>
+  </div>
+
+
+  <!-- Seletion box paired to a data model populated when the page loads. --!>
+  <div class="cardEditing" ng-show="tab === 1">
+    <form>
+    <select name="exhibits" ng-model="selectedExhibit" class="exhibits"
+            ng-options="exhibit.ExhibitName for exhibit in exhibits"
+            ng-change="showExhibit(selectedExhibit.ExhibitID)"></select>
+    </form>
+    <br>
+
+    <!-- Table bound to a model which is initialized when the page loads. --!>
+    <table border="1">
+    <colgroup>
+      <col span="1" id="blueCol">
+      <col span="1" id="greenCol">
+      <col span="1" id="orangeCol">
+      <col span="1" id="blueCol">
+      <col span="1" id="greenCol">
+      <col span="1" id="orangeCol">
+    </colgroup>
+    <tr>
+    <th>Card Number</th>
+    <th>Exhibit Name</th>
+    <th>Title</th>
+    <th>Card Text</th>
+    <th>Image</th>
+    <th>Sound</th>
+    </tr>
+    <tr ng-repeat="card in cards" class="tablerow" ng-dblclick="openCard(card)">
+    <td>{{card.CardNumber}}</td>
+    <td>{{card.ExhibitName}}</td>
+    <td>{{card.CardTitle}}</td>
+    <td>{{card.CardText}}</td>
+    <td>{{card.ImageName}}</td>
+    <td>{{card.SoundName}}</td>
+    </tr>
+    </table>
+  </div>
+
+
+  <!-- A few input items to upload images. Refreshes an invisible iframe(target) on button click. --!>
+  <div class="fileUploading" ng-show="tab === 2">
+    <form action="upload.php" method="post" target="upload_target" enctype="multipart/form-data">
+        Image description (this will be how you identify an image):
+        <input type="text" name="fileName" id="fileName">
+        Select image to upload:
+        <input type="file" name="fileToUpload" id="fileToUpload">
+        <input type="submit" value="Upload Image" name="submit">
+        To assign this to a card, refresh the page.
+    </form>
+  </div>
+
+  <!-- Same for sounds. --!>
+  <div class="soundUploading" ng-show="tab === 3">
+    <form action="soundupload.php" method="post" target="upload_target" enctype="multipart/form-data">
+        Sound description (this will be how you identify an image):
+        <input type="text" name="soundName" id="soundName">
+        Select sound to upload:
+        <input type="file" name="soundToUpload" id="soundToUpload">
+        <input type="submit" value="Upload Sound" name="submit">
+        To assign this to a card, refresh the page.
+        <input type="hidden" name="filePath" value="" id="setURL">
+    </form>
+  </div>
+
+  <!-- Similar to modal window but this is used for adding cards to an exhibit for the first time. --!>
+  <div class="newCard" ng-show="tab === 4">
+    <div class="cardInput">
+      <label class="inputLabel">RFID Number</label>
+      <select name="rfidCards" class="rfidCards" ng-model="exhibitCard" ng-options="card.RFIDNum for card in exhibitCards"></select>
+    </div>
+    <div class="cardInput">
+      <label class="inputLabel">Exhibit</label>
+      <select name="exhibits" ng-model="cardExhibit" class="exhibits"
+              ng-options="exhibit.ExhibitName for exhibit in exhibits">
+      </select>
+    </div>
+    <div class="cardInput">
+      <label class="inputLabel">Title</label>
+      <input type="text" class="cardTitle" ng-model="cardTitle"></input>
+    </div>
+    <div class="cardInput">
+      <label class="inputLabel">Text</label>
+      <textarea class="cardText" cols="50" rows="6" ng-model="cardText"></textarea>
+    </div>
+    <div class="cardInput hasPreview">
+      <label class="inputLabel">Image</label>
+      <select class="imageSelector" ng-model="cardImage" ng-options="image.name for image in images"></select>
+      <img class="previewImage" ng-src="{{cardImage.image}}">
+    </div>
+    <div class="cardInput hasPreview">
+      <label class="inputLabel">Sound</label>
+      <select class="soundSelector" ng-model="cardSound" ng-options="sound.name for sound in sounds"></select>
+      <img class="playSound" src="images/sound.png" ng-click="playSound(cardSound.sound)">
+    </div>
+    <input type="image" ng-click="saveNewCard()" class="saveNewButton" src="images/save.png"></input>
+  </div>
+
+  <div class="deleteFiles" ng-show="tab == 5">
+    <div class="deleteImages">
+      Select an image to delete and click the delete button.
+      <select class="imageSelector" ng-model="imageForDelete" ng-options="image.name for image in images"></select>
+      <button class="imageDeleter" ng-click="deleteImage()">Delete Image</button>
+    </div>
+    <div class="verticalSpacer"></div>
+    <div class="deleteSounds">
+      Select a sound to delete and click the delete button.
+      <select class="soundSelector" ng-model="soundForDelete" ng-options="sound.name for sound in sounds"></select>
+      <button class="imageDeleter" ng-click="deleteSound()">Delete Sound</button>
+    </div>
+  </div>
+
+  <iframe id="upload_target" name="upload_target" src="#" onload="loaded()" style="width:0;height:0;border:0px solid #fff;"></iframe>
+
+  <!-- Dummy tag to play sounds -->
+  <span id="dummy"></span>
+
+</body>
+
+<script>
+document.getElementById('setURL').value = window.location.href.split('#')[0];
+</script>
+
+
+</HTML>
